@@ -34,13 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             } else {
                 // Password is incorrect
-                echo "<script>alert('Incorrect password');</script>";
+				//header("Location: login.php");
+                echo "<script>alert('Incorrect password');window.location.href = 'https://www.fashion-finder.store/login.php';</script>";
                 //For testing purposes
                 //echo "<script>alert('Incorrect password. Login Field: $loginField, Password: $password, Hashed Password: $hashedPassword');</script>";
             }
         } else {
             // User not found
-            echo "<script>alert('User not found');</script>";
+            echo "<script>alert('User Not Found');window.location.href = 'https://www.fashion-finder.store/login.php';</script>";
         }
     } else {
         // Login field or password not provided
