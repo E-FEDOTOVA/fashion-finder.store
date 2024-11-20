@@ -1,0 +1,86 @@
+// like.php
+session_start();
+include 'mylib.php';
+db_connect(); 
+global $db; 
+
+if (!isset($_SESSION['email'])) {
+    echo json_encode(["status" => "error", "message" => "User not logged in."]);
+    exit();
+}
+
+$userEmail = $_SESSION['email'];
+$sql = "SELECT UserID FROM users WHERE email = ?";
+$stmt = $db->prepare($sql);
+$stmt->bind_param("s", $userEmail);
+$stmt->execute();
+$stmt->bind_result($userID);
+$stmt->fetch();
+$stmt->close();
+
+if (!$userID) {
+    echo json_encode(["status" => "error", "message" => "User not found."]);
+    exit();
+}
+
+if (isset($_POST['postID']) && isset($_POST['action'])) {
+    $postID = (int) $_POST['postID'];
+    $action = $_POST['action'];
+
+    if ($action === 'like') {
+        $sql = "SELECT * FROM likeTable WHERE UserID = ? AND PostID = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param("ii", $userID, $postID);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows == 0) {
+            $sql = "INSERT INTO likeTable (PostID, UserID, Timestamp) VALUES (?, ?, NOW())";
+            $stmt = $db->prepare($sql);
+            $stmt->bind_param('ii', $postID, $userID);
+
+            if ($stmt->execute()) {
+                $likeCountSql = "SELECT COUNT(*) AS likeCount FROM likeTable WHERE PostID = ?";
+                $countStmt = $db->prepare($likeCountSql);
+                $countStmt->bind_param("i", $postID);
+                $countStmt->execute();
+                $countStmt->bind_result($likeCount);
+                $countStmt->fetch();
+                $countStmt->close();
+
+                echo json_encode(["status" => "success", "message" => "Post liked.", "likeCount" => $likeCount]);
+            } else {
+                echo json_encode(["status" => "error", "message" => "Failed to like post."]);
+            }
+        } else {
+            echo json_encode(["status" => "duplicate", "message" => "You already liked this post."]);
+        }
+    } elseif ($action === 'unlike') {
+        $sql = "DELETE FROM likeTable WHERE UserID = ? AND PostID = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param("ii", $userID, $postID);
+
+        if ($stmt->execute()) {
+            $likeCountSql = "SELECT COUNT(*) AS likeCount FROM likeTable WHERE PostID = ?";
+            $countStmt = $db->prepare($likeCountSql);
+            $countStmt->bind_param("i", $postID);
+            $countStmt->execute();
+            $countStmt->bind_result($likeCount);
+            $countStmt->fetch();
+            $countStmt->close();
+
+            echo json_encode(["status" => "success", "message" => "Post unliked.", "likeCount" => $likeCount]);
+        } else {
+            echo json_encode(["status" => "error", "message" => "Failed to unlike post."]);
+        }
+    } else {
+        echo json_encode(["status" => "error", "message" => "Invalid action."]);
+    }
+    $stmt->close();
+    exit();
+} else {
+    echo json_encode(["status" => "error", "message" => "Missing required parameters."]);
+    exit();
+}
+$db->close();
+?>
